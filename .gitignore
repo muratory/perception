@@ -1,0 +1,30 @@
+# Ignore python compiled files
+*.pyc
+
+# Ignore .old  .bak
+*.bak
+*.old
+
+
+# Ignore training_data_temp folder
+training_data/
+modelDirectory/
+
+# Ignore .orig
+*.orig
+*.project
+*.pydevproject
+
+
+
+### JetBrains ###
+# Ignore pycharm configuration and internal files
+###
+*.iml
+*.ipr
+*.iws
+.idea/
+.settings/
+
+### Ignore changes in commonDeepDrive, as it is user specific configuration
+commonDeepDriveDefine

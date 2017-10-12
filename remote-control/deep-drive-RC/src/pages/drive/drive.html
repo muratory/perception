@@ -1,0 +1,93 @@
+<ion-header>
+  <ion-navbar>
+    <ion-title>
+      Drive
+    </ion-title>
+  </ion-navbar>
+</ion-header>
+
+<ion-content padding class="drive-area">
+
+  <table class="joystick">
+      <tr>
+        <!-- first row of joystick -->
+        <td class="key"><div class="square">
+          <!-- forward-left -->
+          <img src="{{(isDirection('forward-left') == true)?'img/drive/arrow-forward-left-selected.png':'img/drive/arrow-forward-left-nostroke.png'}}">  </div>
+        </td>
+        <td class="key"><div class="square">
+          <!-- forward -->
+          <img src="{{(isDirection('forward') == true)?'img/drive/arrow-forward-selected.png':'img/drive/arrow-forward.png'}}">
+        </div></td>
+        <td class="key"><div class="square">
+          <!-- forward-right -->
+          <img src="{{(isDirection('forward-right') == true)?'img/drive/arrow-forward-right-selected.png':'img/drive/arrow-forward-right-nostroke.png'}}">
+        </div></td>
+      </tr>
+      <tr>
+        <!-- second row of joystick -->
+        <td class="key"><div class="square">
+          <!-- left -->
+          <img src="{{(isDirection('left') == true)?'img/drive/arrow-left-selected.png':'img/drive/arrow-left.png'}}">
+        </div></td>
+        <td class="key"><div class="square">
+          <!-- middle -->
+          <img src="{{(isDirection('stop') == true)?'img/drive/stop-selected.png':'img/drive/stop.png'}}">
+        </div></td>
+        <td class="key"><div class="square">
+          <!-- right -->
+          <img src="{{(isDirection('right') == true)?'img/drive/arrow-right-selected.png':'img/drive/arrow-right.png'}}">
+        </div></td>
+      </tr>
+      <tr>
+        <!-- third row of joystick -->
+        <td class="key"><div class="square">
+          <!-- backward-left -->
+          <img src="{{(isDirection('backward-left') == true)?'img/drive/arrow-backward-left-selected.png':'img/drive/arrow-backward-left-nostroke.png'}}">
+        </div></td>
+        <td class="key"><div class="square">
+          <!-- backward -->
+          <img src="{{(isDirection('backward') == true)?'img/drive/arrow-backward-selected.png':'img/drive/arrow-backward.png'}}">
+        </div></td>
+        <td class="key"><div class="square">
+          <!-- backward-right -->
+          <img src="{{(isDirection('backward-right') == true)?'img/drive/arrow-backward-right-selected.png':'img/drive/arrow-backward-right-nostroke.png'}}">
+        </div></td>
+      </tr>
+  </table>
+  <div class="controls">
+      <ion-grid>
+        <ion-row justify-content-center>
+          <ion-col>
+              <button ion-button icon-only [disabled]="!bluetoothIsConnected" [color]="nnColors.left" (click)="selectNN('left')">
+                  <ion-icon class="big-icon" name="arrow-dropleft-circle"></ion-icon>
+              </button>
+          </ion-col>
+          <ion-col></ion-col>
+          <ion-col>
+              <button ion-button icon-only [disabled]="!bluetoothIsConnected" [color]="nnColors.straight" (click)="selectNN('straight')">
+                  <ion-icon class="big-icon" name="arrow-dropup-circle"></ion-icon>
+              </button>
+          </ion-col>
+          <ion-col></ion-col>
+          <ion-col>
+              <button ion-button icon-only [disabled]="!bluetoothIsConnected" [color]="nnColors.right" (click)="selectNN('right')">
+                  <ion-icon class="big-icon" name="arrow-dropright-circle"></ion-icon>
+              </button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+      <button ion-button block icon-left *ngIf="!isActive" [disabled]="!bluetoothIsConnected" (click)="startMotion()">
+          <ion-icon name="speedometer"></ion-icon>
+          Start driving
+      </button>
+      <button ion-button block icon-left *ngIf="isActive" (click)="stopMotion()">
+          <ion-icon name="hand"></ion-icon>
+          Stop Driving
+      </button>
+      <button ion-button block icon-left *ngIf="!isActive" (click)="startSpeechToText()">
+          <ion-icon name="speaker"></ion-icon>
+          Test talk
+      </button>
+  </div>
+</ion-content>

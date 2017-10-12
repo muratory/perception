@@ -1,0 +1,9 @@
+--- a/node_modules/ionic-native/dist/es5/plugins/screen-orientation.d.ts	2017-03-15 13:24:11.947157646 +0100
++++ b/node_modules/ionic-native/dist/es5/plugins/screen-orientation.d.ts	2017-03-15 13:23:21.990250568 +0100
+@@ -47,5 +47,5 @@
+     /**
+      * Get the current orientation of the device.
+      */
+-    static orientation: string;
++    static orientation: any;
+ }

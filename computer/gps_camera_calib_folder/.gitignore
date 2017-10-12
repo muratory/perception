@@ -1,0 +1,19 @@
+# Ignore python compiled files
+*.pyc
+
+# Ignore .old  .bak
+*.bak
+*.old
+
+
+# Ignore training_data_temp folder
+*.jpg
+*.p
+*.png
+*.tpz
+
+# Ignore .orig
+*.orig
+*.project
+*.pydevproject
+

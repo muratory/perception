@@ -1,0 +1,29 @@
+
+
+### 1. Intall Python2.7.x in case it is not already install on your computer
+- If installed, check Python version : `python --version`
+    
+
+### 2. Keras Install
+- Follow procedure from : [How-To on StackOverFlow](http://stackoverflow.com/questions/34097988/how-do-i-install-keras-and-theano-in-anaconda-python-2-7-on-windows) site :
+    - Install [TDM GCC x64](http://sourceforge.net/projects/tdm-gcc/files/TDM-GCC%20Installer/tdm64-gcc-5.1.0-2.exe/download)
+    - Install [Anaconda x64](https://www.continuum.io/downloads)
+        - **WARNING** : Ensure you will use Python from Anaconda install folder 
+    - Open DOS command and check PATH used for Conda and Python :
+    ```
+        -  C:\Users\xxxxx> where python
+        -  C:\Users\xxxxx\AppData\Local\Continuum\Anaconda2\python.exe
+        -  C:\Users\xxxxx> where conda
+        -  C:\Users\xxxxx\AppData\Local\Continuum\Anaconda2\Scripts\conda.exe
+    ```
+    - Run conda update conda
+    - Run conda update –all
+    - Run conda install mingw libpython
+    - Run pip install pygame
+    - Run pip install git+git://github.com/Theano/Theano.git
+    - Run pip install git+git://github.com/fchollet/keras.git
+    
+### 3. OpenCV Install 
+- download from https://sourceforge.net/projects/opencvlibrary/files/opencv-win/3.2.0/opencv-3.2.0-vc14.exe/download
+- Follow procedure from : http://docs.opencv.org/trunk/d5/de5/tutorial_py_setup_in_windows.html
+  Resume : Once downloaded double-click to extract it and copy opencv/build/python/2.7/xx/cv2.pyd to C:/Python27/lib/site-packages

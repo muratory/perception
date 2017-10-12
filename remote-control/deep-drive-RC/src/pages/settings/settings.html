@@ -1,0 +1,34 @@
+<ion-header>
+  <ion-navbar>
+    <ion-title>
+      Settings
+    </ion-title>
+  </ion-navbar>
+</ion-header>
+
+<ion-content class="outer-content">
+  <ion-list radio-group [(ngModel)]="rcOrientation" (ionChange)="rcOrientationChange()">
+      <ion-list-header>
+          DRIVER EXPERIENCE
+      </ion-list-header>
+      <ion-item>
+        <ion-label>Flat position stops the car</ion-label>
+        <ion-radio value="flatStop"></ion-radio>
+      </ion-item>
+      <ion-item>
+        <ion-label>45° position stops the car</ion-label>
+        <ion-radio value="fortyFiveDegStop"></ion-radio>
+      </ion-item>
+  </ion-list>
+  <ion-list>
+      <ion-list-header>
+        PIMP MY RIDE
+      </ion-list-header>
+      <ion-item>
+        <ion-range dualKnobs="true" pin="true" min="0" max="100" debounce="300" [(ngModel)]="speed" (ionChange)="speedChange()">
+            <ion-icon range-left small name="speedometer"></ion-icon>
+            <ion-icon range-right name="speedometer"></ion-icon>
+        </ion-range>
+      </ion-item>
+  </ion-list>
+</ion-content>

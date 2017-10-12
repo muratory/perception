@@ -1,0 +1,17 @@
+[Unit]
+Description=Deep Drive service
+
+[Service]
+ExecStart=/home/pi/deep_drive/raspberry/server/bluetooth_server.py
+StandardOutput=null
+Restart=always
+
+#NotifyAccess=main
+#WatchdogSec=10
+#Restart=on-failure
+#CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+#LimitNPROC=1
+
+[Install]
+WantedBy=multi-user.target
+Alias=deepdrive.service

@@ -1,0 +1,33 @@
+--- ./node_modules/ionic-native/dist/es5/plugins/bluetoothserial.js.bak	2017-03-21 13:32:57.441389245 +0100
++++ ./node_modules/ionic-native/dist/es5/plugins/bluetoothserial.js	2017-03-22 09:44:57.377779334 +0100
+@@ -48,6 +48,11 @@
+      */
+     BluetoothSerial.connectInsecure = function (macAddress) { return; };
+     /**
++     * Disconnect from the connected device
++     * @returns {Promise<any>}
++     */
++    BluetoothSerial.disconnect = function () { return ;};
++    /**
+      * Writes data to the serial port
+      * @param {any} data ArrayBuffer of data
+      * @returns {Promise<any>} returns a promise when data has been written
+@@ -153,6 +158,11 @@
+         plugin_1.Cordova({
+             platforms: ['Android', 'iOS', 'Windows Phone']
+         })
++    ], BluetoothSerial, "disconnect", null);
++    __decorate([
++        plugin_1.Cordova({
++            platforms: ['Android', 'iOS', 'Windows Phone']
++        })
+     ], BluetoothSerial, "write", null);
+     __decorate([
+         plugin_1.Cordova({
+@@ -254,4 +264,4 @@
+     return BluetoothSerial;
+ }());
+ exports.BluetoothSerial = BluetoothSerial;
+-//# sourceMappingURL=bluetoothserial.js.map
+\ No newline at end of file
++//# sourceMappingURL=bluetoothserial.js.map

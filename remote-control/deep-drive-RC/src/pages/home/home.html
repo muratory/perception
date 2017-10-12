@@ -1,0 +1,39 @@
+<ion-header>
+  <ion-navbar>
+    <ion-title>Deep Drive Remote Control</ion-title>
+  </ion-navbar>
+</ion-header>
+
+<ion-content padding>
+  <ion-list>
+    <ion-list-header>
+      CAR SELECTION
+    </ion-list-header>
+  </ion-list>
+  <button ion-button block icon-left [disabled]="!bluetoothAllowScan" (click)="bluetoothScanDevices()">
+    <ion-icon name="car"></ion-icon>
+    Find my car
+  </button>
+  <ion-list *ngIf="bluetoothScanStarted">
+    <ion-list-header>
+      SELECT YOUR CAR BELOW
+    </ion-list-header>
+    <button ion-item icon-left *ngFor="let item of foundDevices" (click)="bluetoothDevSelected(item)">
+        <ion-icon name="bluetooth"></ion-icon>
+        {{item.name + " @" + item.address}}
+    </button>
+  </ion-list>
+  <ion-list>
+      <ion-list-header>
+        CAR MANAGEMENT
+      </ion-list-header>
+  </ion-list>
+  <button ion-button block icon-left [disabled]="!bluetoothIsConnected" (click)="bluetoothShowDetails()">
+        <ion-icon name="eye"></ion-icon>
+        Show Car Details
+  </button>
+  <button ion-button block icon-left [disabled]="!bluetoothIsConnected" (click)="bluetoothDisconnect()">
+        <ion-icon name="close-circle"></ion-icon>
+        Disconnect
+  </button>
+</ion-content>

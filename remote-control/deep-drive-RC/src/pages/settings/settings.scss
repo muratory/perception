@@ -1,0 +1,21 @@
+page-settings {
+
+}
+
+ion-list + ion-list {
+    margin-top: 0;
+}
+
+.small-text {
+    font-size: 10px;
+}
+
+@media all and (orientation:portrait) {
+
+
+} /* portrait orientation */
+
+@media all and (orientation:landscape) {
+
+
+}

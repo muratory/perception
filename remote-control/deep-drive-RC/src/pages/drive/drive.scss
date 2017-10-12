@@ -1,0 +1,91 @@
+page-drive {
+
+}
+
+.drive-area {
+  background-color: #133941;
+}
+
+.big-icon {
+  font-size: 50px;
+}
+
+@media all and (orientation:portrait) {
+
+/*  .square {
+      float: left;
+      position: relative;
+      width: 33.33%;
+  }
+  */
+
+  table.joystick {
+    width: 100%;
+  }
+
+  td.key {
+      width: 33.33%;
+      position: relative;
+  }
+
+  td.key:after {
+      content: '';
+      display: block;
+      margin-top: 100%;
+  }
+
+  td .square {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+  }
+
+  div.controls {
+      /* nothing to do, should be below */
+  }
+
+} /* portrait orientation */
+
+@media all and (orientation:landscape) {
+
+/*  .square {
+      float: left;
+      position: relative;
+      height: 33.33%;
+  }
+  */
+
+  table.joystick {
+    /* ideally I would prefer to use 100% available height but KO so far */
+    width: 33.33%;
+    float: left;
+  }
+
+  td.key {
+      width: 33.33%;
+      position: relative;
+  }
+
+  td.key:after {
+      content: '';
+      display: block;
+      margin-top: 100%;
+  }
+
+  td .square {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+  }
+
+  div.controls {
+      float: right;
+  }
+
+}
