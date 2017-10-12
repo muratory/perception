@@ -255,7 +255,7 @@ class PerceptionThread(threading.Thread):
         
         # initial steer command set to stop
         try:
-            
+            '''
             # start keyboard thread to get keyboard input
             self.keyboardThread.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))        
     
@@ -271,9 +271,9 @@ class PerceptionThread(threading.Thread):
             lastFrameTime    = 0
             fpsMeasure =  np.zeros(30, dtype=np.int)
             fpsMeasureIdx=0
-            
+            '''
             while True:
-                '''
+                '''   
                 ############################# Manage IMAGE from car Camera ###############
                 try:
                     # try to see if image ready for car vision
