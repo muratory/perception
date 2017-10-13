@@ -22,6 +22,9 @@ GPS_VIDEO_IP = '192.168.0.81'    # Server(Raspberry Pi) IP address for GPS video
 #GPS server IP
 GPS_IP = '192.168.0.96'    # Server PC that get the GPS video stream and provide GPS fix
 
+#Perception IP server 
+PERCEPTION_IP = 'localhost'
+
 #CAR color for GPS tracking
 VEHICULE_NAME = 'RED'
 #VEHICULE_NAME = 'GREEN'
@@ -45,6 +48,8 @@ PORT_GPS_FIX_SERVER = 8005
 PORT_PATH_CONTROL_COMMAND_SERVER = 8006
 #server which provide control car command
 PORT_ROADLINE_STEERING_SERVER = 8007
+#server which provide perception object 
+PORT_PERCEPTION_SERVER = 8008
 
 #Video server of the image of the road for gps estimate (must be the same on the GPS module)
 PORT_VIDEO_GPS_SERVER = 8020
@@ -59,6 +64,7 @@ ADDR_PATH_CONTROL_STEERING_SERVER = (PATH_CONTROL_IP, PORT_PATH_CONTROL_STEERING
 ADDR_NN_SERVER = (NN_IP,PORT_NN_STEERING_SERVER)
 ADDR_ROADLINE_SERVER = (ROADLINE_IP,PORT_ROADLINE_STEERING_SERVER)
 ADDR_PATH_CONTROL_COMMAND_SERVER = (PATH_CONTROL_IP,PORT_PATH_CONTROL_COMMAND_SERVER)
+ADDR_PERCEPTION_SERVER = (PERCEPTION_IP,PORT_PERCEPTION_SERVER)
 
 #client to enable for Neural Network client to get Video camera
 videoClientEnable = True

@@ -49,7 +49,7 @@ class METADATA(Structure):
                 ("names", POINTER(c_char_p))]
 
 #lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
-lib = CDLL("./libdarknet.so", RTLD_GLOBAL)
+lib = CDLL("./cfgDarknet/libdarknet.so", RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
 lib.network_height.argtypes = [c_void_p]
@@ -180,14 +180,18 @@ class PerceptionThread(threading.Thread):
         self.net = load_net("cfgDarknet/tiny-yolo-voc.cfg", "cfgDarknet/tiny-yolo-voc.weights", 0)
         self.meta = load_meta("cfgDarknet/voc.data")
 
-        #test with camera
-        self.cap = cv2.VideoCapture(0)
-
+        #Perception server to provide detected object to client
+        self.srvPerception = serverThread()
+        self.srvPerception.name = 'srvPerception'
+        self.srvPerception.start()
+        
+        
     def ConnectClient(self):
         # loop until all client connected
         videoCarClientConnected = False
         sensorClientConnected = False
         gpsClientConnected = False
+        PerceptionServerConnected = False
 
         # launch connection thread for all client
         if videoCarClientEnable == True:
@@ -202,8 +206,13 @@ class PerceptionThread(threading.Thread):
         if gpsEnable == True:
             self.sctGps.cmd_q.put(ClientCommand(ClientCommand.CONNECT, ADDR_GPS_FIX_SERVER))
             
+        if perceptionEnable == True:
+            self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.CONNECT, PORT_PERCEPTION_SERVER))
+
+            
         while ((videoCarClientConnected != videoCarClientEnable) or
                 (sensorClientConnected != sensorClientEnable) or
+                (PerceptionServerConnected != perceptionEnable) or
                 (gpsClientConnected != gpsEnable)):
 
             # wait for .5 second before to check
@@ -237,6 +246,16 @@ class PerceptionThread(threading.Thread):
                 except Queue.Empty:
                     print 'Gps Client not connected' 
                     
+                    
+            if (PerceptionServerConnected != perceptiondEnable):
+                try:
+                    reply = self.srvPerception.reply_q.get(False)
+                    if reply.type == ClientReply.SUCCESS:
+                        PerceptionServerConnected=True
+                        print 'Perception server connected'
+                except Queue.Empty:
+                    print 'Perception command not connected' 
+                    
             try:
                 reply = self.keyboardThread.reply_q.get(False)
                 if reply.type == ClientReply.SUCCESS:
@@ -255,7 +274,7 @@ class PerceptionThread(threading.Thread):
         
         # initial steer command set to stop
         try:
-            '''
+            
             # start keyboard thread to get keyboard input
             self.keyboardThread.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))        
     
@@ -271,9 +290,8 @@ class PerceptionThread(threading.Thread):
             lastFrameTime    = 0
             fpsMeasure =  np.zeros(30, dtype=np.int)
             fpsMeasureIdx=0
-            '''
+            
             while True:
-                '''   
                 ############################# Manage IMAGE from car Camera ###############
                 try:
                     # try to see if image ready for car vision
@@ -311,62 +329,6 @@ class PerceptionThread(threading.Thread):
                 except Queue.Empty:
                     # queue empty most of the time because image not ready
                     pass
-                '''
-                
-                ############################# test with camera ###############
-                ret, frame = self.cap.read()
-                
-                cv2.imwrite('frame.png',frame)
-                
-                r = detect(self.net, self.meta, 'frame.png')
-        
-                if len(r)>0:
-                    #print r
-                    for element in r:
-                        classObject,pb,bb = element
-        
-                        #print bb
-                        x,y,w,h=bb
-                        x1 = int(x-w/2)
-                        y1 = int(y-h/2)
-                        x2 = int(x+w/2)
-                        y2 = int(y+h/2)
-                        
-                        kernel=(21,21)
-                        
-                        if classObject == 'person':
-                            cv2.rectangle(frame, (x1, y1), (x2,y2), (0,0,255), 2)
-                            #blur half upper part
-                            sub_rec = frame[y1:y1+(y2-y1)/2,x1:x2]
-                            if sub_rec.shape[0] > 21 and sub_rec.shape[1] > 21:
-                                sub_rec = cv2.blur(sub_rec,kernel,35)
-                                #print 'p =',sub_rec.shape
-                                frame[y1:y1+(y2-y1)/2,x1:x2] = sub_rec
-                        
-                        elif classObject == 'car':
-                            cv2.rectangle(frame, (x1, y1), (x2,y2), (255,0,0), 2)
-                            #blur half upper part
-                            sub_rec = frame[y1+(y2-y1)/2:y2,x1:x2]
-                            if sub_rec.shape[0] > 21 and sub_rec.shape[1] > 21:
-                                sub_rec = cv2.blur(sub_rec,kernel,35)
-                                #print 'c =',sub_rec.shape
-                                frame[y1+(y2-y1)/2:y2,x1:x2] = sub_rec
-                        else :
-                            cv2.rectangle(frame, (x1, y1), (x2,y2), (0,255,0), 2)
-                            
-                        #write object class in black
-                        cv2.putText(frame,classObject+' prob='+str(int(pb*100)),(x1+1,y1+10),cv2.FONT_HERSHEY_SIMPLEX, 1,(0,0,0),1)
-                                    
-                            
-                            
-                # Display the resulting frame
-                cv2.imshow('frame',frame)
-                # check if we want to stop autonomous driving
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-            
-
-
 
         
                 ############################# Get Sensor value ###############
@@ -447,10 +409,6 @@ class PerceptionThread(threading.Thread):
             self.sctGps.join()
             print 'Deep Driver Done'
             
-                
-            # When everything done, release the capture
-            self.cap.release()
-            cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     # create Deep drive thread and strt
