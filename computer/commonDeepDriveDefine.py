@@ -5,7 +5,7 @@ import os
 #IP mapping and definition
 #Car IP 
 # CAR_IP = '192.168.0.3'    # Server(Raspberry Pi) IP address
-CAR_IP = '192.168.0.3'    # Server(Raspberry Pi) IP address
+CAR_IP = '192.168.0.101'    # Server(Raspberry Pi) IP address
 
 #POSITION_IP 
 PATH_CONTROL_IP = 'localhost'   #IP for PC handling path control 
@@ -75,15 +75,15 @@ steerClientEnable = True
 #Client to enable to get ultrasonic sensor distance
 sensorClientEnable = False
 #true if we have gps hardware available and stream connected
-gpsEnable = True
+gpsEnable = False
 #true if the path control Server/client need to be activated
 pathControlSteeringEnable = True
 #true if the path control command  server/client is enable.
-pathControlCommandEnable = True
+pathControlCommandEnable = False
 #true if we want to compute GraphSlam steering estimate
-graphSlamEnable = True
+graphSlamEnable = False
 #true if the neural network steering prediction (with client and server) is enable 
-nnSteeringEnable = True
+nnSteeringEnable = False
 #true if the roadLine detection steering is enable 
 roadLineSteeringEnable = False
 #true if the roadLine detection steering is enable 
@@ -123,9 +123,12 @@ STEP_CAPTURE = 1
 
 # value of video FPS used to determine for instance runnin gaverage
 VIDEO_FPS = 30
+VIDEO_FPS_TIME = 0.033
 
 #sampling of the image into vstack array (FPS record)
 FPS_RECORD_TIME = 0.1
+
+
 
 # sampling time for
 STEERING_KEYBOARD_SAMPLING_TIME = 0.02

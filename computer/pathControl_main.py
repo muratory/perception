@@ -8,9 +8,10 @@ import time
 from commonDeepDriveDefine import *
 from commonDeepDriveTools import *
 from KeyboardThread import *
-from VideoThread import *
 from gpsClientThread import *
+from perceptionClientThread import *
 from graphSlamThread import *
+from pathControlClientThread import *
 
 
 
@@ -30,11 +31,6 @@ class pathControl(threading.Thread):
     def __init__(self):
         # call init
         threading.Thread.__init__(self)
-
-        # create Video Stream Client Thread used mainly for Land Mark and obj detec. 
-        self.sctVideoCarStream = VideoThread()
-        self.sctVideoCarStream.name = 'sctVideoCarStream'
-        self.sctVideoCarStream.start()
 
 
         # create Keyboard Thread
@@ -58,6 +54,11 @@ class pathControl(threading.Thread):
         self.sctGps = gpsClientThread()
         self.sctGps.name = 'GpsClientPathControl'
         self.sctGps.start()
+        
+        #create Gps Thread that receive image from camera and detect cars
+        self.sctPerception = perceptionClientThread()
+        self.sctPerception.name = 'PerceptionClientPathControl'
+        self.sctPerception.start()
 
         #create GraphSlam Thread to compute slam
         self.graphSlamThread = graphSlamThread()
@@ -68,21 +69,19 @@ class pathControl(threading.Thread):
 
     def ConnectClient(self):
         # loop until all client connected
-        videoCarClientConnected = False
         sctGpsConnected = False
+        sctPerceptionConnected = False
         gpsServerFixConnected = False
         PathControlCommandServerConnected = False
         pathControlSteeringServerConnected = False
                
 
-        # launch connection thread for all client
-        if videoCarClientEnable == True:
-            self.sctVideoCarStream.cmd_q.put(ClientCommand(
-                ClientCommand.CONNECT, 'http://' + CAR_IP + ':' +
-                str(PORT_VIDEO_CAR_SERVER) + '/?action=stream'))
-                    
+        # launch connection thread for all client                    
         if gpsEnable == True:
             self.sctGps.cmd_q.put(ClientCommand(ClientCommand.CONNECT, ADDR_GPS_FIX_SERVER))
+            
+        if perceptionEnable == True:
+            self.sctPerception.cmd_q.put(ClientCommand(ClientCommand.CONNECT, ADDR_PERCEPTION_SERVER))
             
                 
         if pathControlSteeringEnable == True:
@@ -92,22 +91,12 @@ class pathControl(threading.Thread):
             self.srvPathControlCommand.cmd_q.put(ClientCommand(ClientCommand.CONNECT, PORT_PATH_CONTROL_COMMAND_SERVER))
 
 
-        while ((videoCarClientConnected != videoCarClientEnable) or
-                (pathControlSteeringServerConnected != pathControlSteeringEnable) or
+        while ((pathControlSteeringServerConnected != pathControlSteeringEnable) or
                 (PathControlCommandServerConnected != pathControlCommandEnable) or
-                (sctGpsConnected != gpsEnable)):
-
+                (sctGpsConnected != gpsEnable) or
+                (sctPerceptionConnected != perceptionEnable)):
             # wait for .5 second before to check
             time.sleep(0.5)
-
-            if (videoCarClientConnected != videoCarClientEnable):
-                try:
-                    reply = self.sctVideoCarStream.reply_q.get(False)
-                    if reply.type == ClientReply.SUCCESS:
-                        videoCarClientConnected = True
-                        print 'Video stream server connected'
-                except Queue.Empty:
-                    print 'Video Client not connected'
                     
             if (pathControlSteeringServerConnected != pathControlSteeringEnable):
                 try:
@@ -117,16 +106,7 @@ class pathControl(threading.Thread):
                         print 'steering pathControl server connected'
                 except Queue.Empty:
                     print 'steering pathControl server not connected' 
-                    
-            if (PathControlCommandServerConnected != pathControlCommandEnable):
-                try:
-                    reply = self.srvPathControlCommand.reply_q.get(False)
-                    if reply.type == ClientReply.SUCCESS:
-                        PathControlCommandServerConnected=True
-                        print 'pathControl command server connected'
-                except Queue.Empty:
-                    print 'pathControl command not connected' 
-            
+
             if (sctGpsConnected != gpsEnable):
                 try:
                     reply = self.sctGps.reply_q.get(False)
@@ -135,6 +115,16 @@ class pathControl(threading.Thread):
                         print 'Gps fix client connected'
                 except Queue.Empty:
                     print 'Gps fix Client not connected' 
+                    
+
+            if (sctPerceptionConnected != perceptionEnable):
+                try:
+                    reply = self.sctPerception.reply_q.get(False)
+                    if reply.type == ClientReply.SUCCESS:
+                        sctPerceptionConnected=True
+                        print 'Perception  client connected'
+                except Queue.Empty:
+                    print 'Perception  Client not connected' 
                     
             try:
                 reply = self.keyboardThread.reply_q.get(False)
@@ -158,6 +148,16 @@ class pathControl(threading.Thread):
         pathControlSpeed = INITIAL_CAR_SPEED
         lastPastControlSpeed = 0
         lastCommandTime = time.time()
+        lastVideoTime = time.time()
+        lastnoObjectTime=time.time()
+
+        objectName=''
+        distObj=0
+        
+        
+        
+        speedBeforeStop = 0 #0 means no speed before stop
+        noObjCounter = 0
 
         if graphSlamEnable:
             cv2.namedWindow('GraphSlam')
@@ -176,41 +176,40 @@ class pathControl(threading.Thread):
                 return
             
             print 'Start Main Thread and sub Thread for path Control '
-            self.sctVideoCarStream.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
             self.sctGps.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
+            self.sctPerception.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
 
             while True:
-                ################# Manage IMAGE from car Camera that should be use for LM and Obj detec ###############
-                try:
-                    # try to see if image ready for car vision
-                    replyVideo = self.sctVideoCarStream.reply_q.get(False)
-                    if replyVideo.type == ClientReply.SUCCESS:
+                ################# Manage IMAGE from car Camera###############
+                timeNow = time.time()
+                if timeNow > lastVideoTime + 0.1:
+                    
+                    
+                    # get image
+                    i = cv2.imread('frame.png')
+                    
+                    if i != None:
+                        lastVideoTime = timeNow
 
-                        # decode jpg into array
-                        i = cv2.imdecode(np.fromstring(self.sctVideoCarStream.lastImage, dtype=np.uint8),-1)
-
-                        cv2.putText(i, 'Path SteerAngle  = ' + str(steerPathAngle), (0,IMAGE_PIXELS_Y/2), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
-                        cv2.putText(i, 'GPS position =' + str(gpsPosition), (0,IMAGE_PIXELS_Y/2 + 15), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
-                        cv2.putText(i, 'pathControlCommand =' + lastPastControlCommand, (0,IMAGE_PIXELS_Y/2 + 30), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
-                        cv2.putText(i, 'pathControlSpeed =' + str(lastPastControlSpeed), (0,IMAGE_PIXELS_Y/2 + 45), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1) 
-                        cv2.putText(i, 'GPS speed mm/s  =' + str(gpsSpeed), (0,IMAGE_PIXELS_Y/2 + 60), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
+                        cv2.putText(i, 'Path SteerAngle  = ' + str(steerPathAngle), (0,15), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
+                        cv2.putText(i, 'GPS position =' + str(gpsPosition), (0,30), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
+                        cv2.putText(i, 'pathControlCommand =' + lastPastControlCommand, (0,45), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
+                        cv2.putText(i, 'pathControlSpeed =' + str(lastPastControlSpeed), (0,60), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1) 
+                        cv2.putText(i, 'GPS speed mm/s  =' + str(gpsSpeed), (0,75), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
+                        if objectName !='' :
+                            cv2.putText(i, 'Object  =' +objectName+', '+ str(distObj), (0,90), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,255), 2)
+                            objectName = ''
                         
                         #show green line steering angle
                         showLabel(steerPathAngle,'PathControlVision', i)
                         
+                        
                         #display the car vision and info
                         cv2.imshow('PathControlVision', i)
-                        
+                            
                         # check if we want to stop autonomous driving
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
-                    else:
-                        print 'Error getting image :' + str(replyVideo.data)
-                        break
-                    
-                except Queue.Empty:
-                    # queue empty most of the time because image not ready
-                    pass
                 
 
                 ################# Handle fix from GPS ###############
@@ -236,8 +235,45 @@ class pathControl(threading.Thread):
                     pass
                 
                 
-                
-                      
+                 ################# Handle PErception object ###############
+                timeNow = time.time() 
+                try:
+                    #check if car gps fix has been detected
+                    reply = self.sctPerception.reply_q.get(False)
+                    if reply.type == ClientReply.SUCCESS:
+                        #Object  has been receive . process it
+                        objectName,distObj = reply.data.split(',')
+                        #print 'Received object',objectName,distObj
+                        
+                        #we received an object so reset the noObjCounter
+                        noObjCounter=0
+
+                        #take action depending on object detected
+                        if (objectName == 'stop'):
+                            if (int(distObj) <= 25 ):
+                                if speedBeforeStop == 0:
+                                    #first time we detetected the stop
+                                    speedBeforeStop = pathControlSpeed
+                                    #reset speed and time counter
+                                    pathControlSpeed = 0
+                                    lastStopTime = timeNow
+                                else:
+                                    if timeNow > lastStopTime + 2.0:
+                                        #we do the stop during 4 second and then restart the car
+                                        pathControlSpeed = speedBeforeStop
+                                        
+                                        if timeNow > lastStopTime + 7.0:
+                                            #during this extra time we do avoid to do the stop again even if detected 
+                                            #and then reset everything 
+                                            lastStopTime = timeNow
+                                            speedBeforeStop =0
+                                            
+                except Queue.Empty:
+                    #noObjCounter is incremented every second 
+                    if timeNow > lastnoObjectTime + 1.0:
+                        noObjCounter+=1
+                        lastnoObjectTime=timeNow
+                     
                 #############################Handle gpraphSlam ###############
                 #check now if the slamGraph Thread posted a new steeringAngle
                 try:
@@ -360,8 +396,6 @@ class pathControl(threading.Thread):
             print 'ending path control Thread'
 
             # stop and close all client and close them
-            self.sctVideoCarStream.cmd_q.put(ClientCommand(ClientCommand.STOP))
-            self.sctVideoCarStream.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             self.keyboardThread.cmd_q.put(ClientCommand(ClientCommand.STOP))
             self.srvPathControlSteering.cmd_q.put(ClientCommand(ClientCommand.STOP))
             self.srvPathControlSteering.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
@@ -369,12 +403,15 @@ class pathControl(threading.Thread):
             self.srvPathControlCommand.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             self.sctGps.cmd_q.put(ClientCommand(ClientCommand.STOP))
             self.sctGps.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
+            self.sctPerception.cmd_q.put(ClientCommand(ClientCommand.STOP))
+            self.sctPerception.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             self.graphSlamThread.cmd_q.put(ClientCommand(ClientCommand.STOP))
                                                        
             # and make sure all of them ended properly
-            self.sctVideoCarStream.join()
             self.keyboardThread.join()
             self.srvPathControlSteering.join()
+            self.sctGps.join()
+            self.sctPerception.join()
             self.srvPathControlCommand.join()
             self.graphSlamThread.join()
             print 'Path control Done'

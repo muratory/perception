@@ -13,7 +13,7 @@ from commonDeepDriveDefine import *
 from KeyboardThread import *
 from VideoThread import *
 from SensorThread import *
-from gpsClientThread import *
+
 
 
 
@@ -128,7 +128,7 @@ def classify(net, meta, im):
     return res
 
 
-def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
+def detect(net, meta, image, thresh=.2, hier_thresh=.5, nms=.45):
     im = load_image(image, 0, 0)
     boxes = make_boxes(net)
     probs = make_probs(net)
@@ -168,17 +168,11 @@ class PerceptionThread(threading.Thread):
 
         # create Keyboard Thread
         self.keyboardThread = keyboardThread()
-        self.keyboardThread.name = 'car_main_kb'
+        self.keyboardThread.name = 'Perception_Kb'
         self.keyboardThread.start()
 
-
-        #create Gps Thread
-        self.sctGps = gpsClientThread()
-        self.sctGps.name = 'GpsClientThread'
-        self.sctGps.start()
-
-        self.net = load_net("cfgDarknet/tiny-yolo-voc.cfg", "cfgDarknet/tiny-yolo-voc.weights", 0)
-        self.meta = load_meta("cfgDarknet/voc.data")
+        self.net = load_net("cfgDarknet/tiny-yolo-voc_demo.cfg", "cfgDarknet/tiny-yolo-voc_demo.weights", 0)
+        self.meta = load_meta("cfgDarknet/dataFile_demo.data")
 
         #Perception server to provide detected object to client
         self.srvPerception = serverThread()
@@ -190,8 +184,7 @@ class PerceptionThread(threading.Thread):
         # loop until all client connected
         videoCarClientConnected = False
         sensorClientConnected = False
-        gpsClientConnected = False
-        PerceptionServerConnected = False
+        perceptionServerConnected = False
 
         # launch connection thread for all client
         if videoCarClientEnable == True:
@@ -203,17 +196,12 @@ class PerceptionThread(threading.Thread):
         if sensorClientEnable == True:
             self.sctCarSensor.cmd_q.put(ClientCommand(ClientCommand.CONNECT, ADDR_SENSOR_SERVER))
 
-        if gpsEnable == True:
-            self.sctGps.cmd_q.put(ClientCommand(ClientCommand.CONNECT, ADDR_GPS_FIX_SERVER))
-            
         if perceptionEnable == True:
             self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.CONNECT, PORT_PERCEPTION_SERVER))
 
             
         while ((videoCarClientConnected != videoCarClientEnable) or
-                (sensorClientConnected != sensorClientEnable) or
-                (PerceptionServerConnected != perceptionEnable) or
-                (gpsClientConnected != gpsEnable)):
+                (sensorClientConnected != sensorClientEnable)):
 
             # wait for .5 second before to check
             time.sleep(0.5)
@@ -236,26 +224,7 @@ class PerceptionThread(threading.Thread):
                 except Queue.Empty:
                     print 'Sensor Client not connected'
 
-                    
-            if (gpsClientConnected != gpsEnable):
-                try:
-                    reply = self.sctGps.reply_q.get(False)
-                    if reply.type == ClientReply.SUCCESS:
-                        gpsClientConnected=True
-                        print 'Gps server connected'
-                except Queue.Empty:
-                    print 'Gps Client not connected' 
-                    
-                    
-            if (PerceptionServerConnected != perceptiondEnable):
-                try:
-                    reply = self.srvPerception.reply_q.get(False)
-                    if reply.type == ClientReply.SUCCESS:
-                        PerceptionServerConnected=True
-                        print 'Perception server connected'
-                except Queue.Empty:
-                    print 'Perception command not connected' 
-                    
+
             try:
                 reply = self.keyboardThread.reply_q.get(False)
                 if reply.type == ClientReply.SUCCESS:
@@ -285,10 +254,9 @@ class PerceptionThread(threading.Thread):
             print 'Start Main Thread and sub Thread for perception'
             self.sctVideoCarStream.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
             self.sctCarSensor.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
-            self.sctGps.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, VEHICULE_NAME))
 
-            lastFrameTime    = 0
-            fpsMeasure =  np.zeros(30, dtype=np.int)
+            lastFrameTime    = time.time()
+            fpsMeasure =  np.zeros(30, dtype=np.float)
             fpsMeasureIdx=0
             
             while True:
@@ -311,11 +279,61 @@ class PerceptionThread(threading.Thread):
                         fpsMeasureIdx+=1
                         if fpsMeasureIdx >=30 :
                             fpsMeasureIdx = 0
-                        fps = np.sum(fpsMeasure)/30
+                        fps = 1/(np.sum(fpsMeasure)/30)
+                        lastFrameTime=timeNow
+
+                        
+                        ############################# Perception ###############
+                        r = detect(self.net, self.meta, 'frame.png')
+                        
+
+                
+                        if len(r)>0:
+                            #print r
+                            for element in r:
+                                classObject,pb,bb = element
+                
+                                #print bb
+                                x,y,w,h=bb
+                                x1 = int(x-w/2)
+                                y1 = int(y-h/2)
+                                x2 = int(x+w/2)
+                                y2 = int(y+h/2)
+                                
+                                kernel=(21,21)
+                                
+                                if classObject == 'person':
+                                    cv2.rectangle(i, (x1, y1), (x2,y2), (0,0,255), 2)
+                                    coefFocal = 2                          
+                                elif classObject == 'car':
+                                    cv2.rectangle(i, (x1, y1), (x2,y2), (0,0,255), 2)
+                                    coefFocal = 5
+                                elif classObject == 'stop' :
+                                    cv2.rectangle(i, (x1, y1), (x2,y2), (0,0,255), 2)
+                                    coefFocal = 1
+                                elif classObject == 'renault' :
+                                    cv2.rectangle(i, (x1, y1), (x2,y2), (255,0,0), 2)
+                                    coefFocal=2
+                                else:
+                                    cv2.rectangle(i, (x1, y1), (x2,y2), (0,255,0), 2)   
+                                    coefFocal = 1                             
+             
+                                #send object when detected 
+                                distObj = coefFocal*3000/int(((x2-x1)+(y2-y1)))
+                                
+                                                                #write object class in black
+                                cv2.putText(i,classObject+' '+str(distObj)+'cm',(x1+1,y1+10),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,0),1)
+
+                                self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.SEND, classObject+','+str(distObj)))
+                            
+
+                        
+                        #after detection you can increase image size
+                        i=cv2.pyrUp(i)
                         
                         #we have time to display some stuff
-                        cv2.putText(i, 'Perception FPS  = ' + str(fps), (0,IMAGE_PIXELS_Y/2 + 0), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0), 1)
-                        
+                        cv2.putText(i, 'Perception FPS  = ' + str(int(fps)), (0,20), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0), 1)
+                                                
                         #display the car vision and info
                         cv2.imshow('Perception', i)
                         
@@ -400,14 +418,14 @@ class PerceptionThread(threading.Thread):
             self.sctCarSensor.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             self.keyboardThread.cmd_q.put(ClientCommand(ClientCommand.STOP))
             self.keyboardThread.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
-            self.sctGps.cmd_q.put(ClientCommand(ClientCommand.STOP))
-            self.sctGps.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
+            self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.STOP))
+            self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             # and make sure all of them ended properly
             self.sctVideoCarStream.join()
             self.sctCarSensor.join()
             self.keyboardThread.join()
-            self.sctGps.join()
-            print 'Deep Driver Done'
+            self.srvPerception.join()
+            print 'Perception Done'
             
 
 if __name__ == '__main__':

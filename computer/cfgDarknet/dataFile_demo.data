@@ -1,0 +1,3 @@
+classes=3
+names=/home/pierre/perception/computer/cfgDarknet/labels_demo.names
+backup = backup
