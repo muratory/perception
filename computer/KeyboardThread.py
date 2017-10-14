@@ -1,5 +1,6 @@
 import threading
 import Queue
+import os
 from commonDeepDriveDefine import *
 from commonDeepDriveTools import *
 import pygame
@@ -12,8 +13,9 @@ class keyboardThread(commonThread):
         can be controlled via the cmd_q Queue attribute. Replies are placed in
         the reply_q Queue attribute.
     """
-    def __init__(self):
+    def __init__(self,x=0,y=0):
         super(keyboardThread, self).__init__()
+        os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
 
 
     def run(self):

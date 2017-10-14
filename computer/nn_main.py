@@ -41,7 +41,7 @@ class nnMain(threading.Thread):
         self.sctVideoStream.start()
 
         # create Keyboard Thread
-        self.keyboardThread = keyboardThread()
+        self.keyboardThread = keyboardThread(0,800)
         self.keyboardThread.name = 'nn_main_Kb'
         self.keyboardThread.start()
         
@@ -148,6 +148,9 @@ class nnMain(threading.Thread):
         else:
             forceNNroadLabel = 'IDLE'
 
+        cv2.namedWindow('NNvision')
+        cv2.moveWindow('NNvision',250,800)
+        
         
         print 'LOADING NEURAL NETWORK. PLEASE WAIT'
         

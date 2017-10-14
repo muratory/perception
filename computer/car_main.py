@@ -40,7 +40,7 @@ class DeepDriveThread(threading.Thread):
         self.sctCarSensor.start()
 
         # create Keyboard Thread
-        self.keyboardThread = keyboardThread()
+        self.keyboardThread = keyboardThread(1800,800)
         self.keyboardThread.name = 'car_main_kb'
         self.keyboardThread.start()
         
@@ -262,6 +262,10 @@ class DeepDriveThread(threading.Thread):
         errorSpeed = 0
         lastErrorSpeed = 0
         
+        cv2.namedWindow('CarVision')
+        #display the car vision and info
+        cv2.moveWindow('CarVision', 1300,700)
+        
         # initial steer command set to stop
         try:
             
@@ -389,7 +393,7 @@ class DeepDriveThread(threading.Thread):
                         if strCommand.find('SPEED') >= 0:
                             speedList = strCommand.split('=')
                             #keep only the speed
-                            #print 'Speed Command receive speed = ',speedList[1]
+                            print 'Speed Command receive speed = ',speedList[1]
                             #convert into int
                             pathControlSpeed = int(speedList[1])
 
@@ -447,19 +451,6 @@ class DeepDriveThread(threading.Thread):
                                     
                                     lastErrorSpeed = errorSpeed
 
-
-                                
-                                #boundaries check
-                                if pwmSpeed > MAX_CAR_SPEED_COMMAND:
-                                    pwmSpeed = MAX_CAR_SPEED_COMMAND
-                                elif pwmSpeed < 0 :
-                                    pwmSpeed = 0
-
-                                #send the speed to car
-                                if pwmSpeed != lastpwmSpeed :
-                                    self.sctCarSteering.cmd_q.put(ClientCommand(ClientCommand.SEND, ('SPEED', pwmSpeed)))
-                                    lastpwmSpeed = pwmSpeed                    
-                                
                     else:
                         print 'Error getting Gps value :' + str(reply.data)
                         break
@@ -586,6 +577,7 @@ class DeepDriveThread(threading.Thread):
                                 #when stopping keyboard control, come back to last angle control
                                 inputAngle = lastInputAngle
                             strText=''
+                            turn_angle = 0
                             
                         else:
                             # key not known display error
@@ -680,6 +672,23 @@ class DeepDriveThread(threading.Thread):
                     if recordTime != 0:
                         totalRecordTime += (timeNow - recordTime)
                         recordTime = 0
+                        
+                        
+                #############################################in any case send speed if new one exist
+                
+                if gpsEnable == False:
+                    pwmSpeed = int((pathControlSpeed * MAX_CAR_SPEED_COMMAND)/ MAX_CAR_SPEED )
+                
+                #boundaries check
+                if pwmSpeed > MAX_CAR_SPEED_COMMAND:
+                    pwmSpeed = MAX_CAR_SPEED_COMMAND
+                elif pwmSpeed < 0 :
+                    pwmSpeed = 0                 
+
+                #send the speed to car
+                if pwmSpeed != lastpwmSpeed :
+                    self.sctCarSteering.cmd_q.put(ClientCommand(ClientCommand.SEND, ('SPEED', pwmSpeed)))
+                    lastpwmSpeed = pwmSpeed
                         
         finally:
             if totalRecordTime !=0 or record==1:            

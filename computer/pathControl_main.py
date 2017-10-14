@@ -15,16 +15,7 @@ from pathControlClientThread import *
 
 
 
-
-
-
-
-
 ####################################### Deep Drive Thread ##############################
-
-
-
-
 
 class pathControl(threading.Thread):
 
@@ -34,7 +25,7 @@ class pathControl(threading.Thread):
 
 
         # create Keyboard Thread
-        self.keyboardThread = keyboardThread()
+        self.keyboardThread = keyboardThread(1960,0)
         self.keyboardThread.name = 'pathControl_Kb'
         self.keyboardThread.start()
         
@@ -91,21 +82,11 @@ class pathControl(threading.Thread):
             self.srvPathControlCommand.cmd_q.put(ClientCommand(ClientCommand.CONNECT, PORT_PATH_CONTROL_COMMAND_SERVER))
 
 
-        while ((pathControlSteeringServerConnected != pathControlSteeringEnable) or
-                (PathControlCommandServerConnected != pathControlCommandEnable) or
-                (sctGpsConnected != gpsEnable) or
+        while ((sctGpsConnected != gpsEnable) or
                 (sctPerceptionConnected != perceptionEnable)):
             # wait for .5 second before to check
             time.sleep(0.5)
                     
-            if (pathControlSteeringServerConnected != pathControlSteeringEnable):
-                try:
-                    reply = self.srvPathControlSteering.reply_q.get(False)
-                    if reply.type == ClientReply.SUCCESS:
-                        pathControlSteeringServerConnected=True
-                        print 'steering pathControl server connected'
-                except Queue.Empty:
-                    print 'steering pathControl server not connected' 
 
             if (sctGpsConnected != gpsEnable):
                 try:
@@ -145,7 +126,8 @@ class pathControl(threading.Thread):
         lastPastControlCommand = 'NONE'
         
         #path control speed
-        pathControlSpeed = INITIAL_CAR_SPEED
+        initialCarSpeed = INITIAL_CAR_SPEED
+        pathControlSpeed = initialCarSpeed
         lastPastControlSpeed = 0
         lastCommandTime = time.time()
         lastVideoTime = time.time()
@@ -154,17 +136,19 @@ class pathControl(threading.Thread):
         objectName=''
         distObj=0
         
-        
-        
         speedBeforeStop = 0 #0 means no speed before stop
         noObjCounter = 0
 
         if graphSlamEnable:
             cv2.namedWindow('GraphSlam')
+            
+        cv2.namedWindow('PathControlVision')
+        cv2.moveWindow('PathControlVision', 1300, 0)
  
         steerPathAngle = 0 #angle coming from Position module and graph slam ...
         
-
+        stopState = 'None'
+        lastStopState = stopState
         # initial steer command set to stop
         try:
             
@@ -179,6 +163,8 @@ class pathControl(threading.Thread):
             self.sctGps.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
             self.sctPerception.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
 
+            
+
             while True:
                 ################# Manage IMAGE from car Camera###############
                 timeNow = time.time()
@@ -186,7 +172,7 @@ class pathControl(threading.Thread):
                     
                     
                     # get image
-                    i = cv2.imread('frame.png')
+                    i = cv2.imread('frame.jpg')
                     
                     if i != None:
                         lastVideoTime = timeNow
@@ -235,7 +221,7 @@ class pathControl(threading.Thread):
                     pass
                 
                 
-                 ################# Handle PErception object ###############
+                 ################# Handle object recievde from perception ###############
                 timeNow = time.time() 
                 try:
                     #check if car gps fix has been detected
@@ -243,37 +229,51 @@ class pathControl(threading.Thread):
                     if reply.type == ClientReply.SUCCESS:
                         #Object  has been receive . process it
                         objectName,distObj = reply.data.split(',')
-                        #print 'Received object',objectName,distObj
+                        print 'Received object',objectName,distObj
                         
                         #we received an object so reset the noObjCounter
                         noObjCounter=0
+                        lastnoObjectTime = timeNow
 
                         #take action depending on object detected
                         if (objectName == 'stop'):
-                            if (int(distObj) <= 25 ):
-                                if speedBeforeStop == 0:
-                                    #first time we detetected the stop
+                            if (int(distObj) <= 30 ):
+                                #only stop the car if we are not already in a procedure to stop it
+                                if stopState == 'None':
+                                    stopState = 'firstEntry'
+                                    #reset speed for sure and wait at least 4 s
                                     speedBeforeStop = pathControlSpeed
-                                    #reset speed and time counter
                                     pathControlSpeed = 0
-                                    lastStopTime = timeNow
-                                else:
-                                    if timeNow > lastStopTime + 2.0:
-                                        #we do the stop during 4 second and then restart the car
-                                        pathControlSpeed = speedBeforeStop
-                                        
-                                        if timeNow > lastStopTime + 7.0:
-                                            #during this extra time we do avoid to do the stop again even if detected 
-                                            #and then reset everything 
-                                            lastStopTime = timeNow
-                                            speedBeforeStop =0
-                                            
+                                    lastStopTime = timeNow 
+                                           
                 except Queue.Empty:
                     #noObjCounter is incremented every second 
                     if timeNow > lastnoObjectTime + 1.0:
                         noObjCounter+=1
                         lastnoObjectTime=timeNow
-                     
+
+                #manage the state for speed control:
+                if stopState=='firstEntry':
+                    #wait for 4 s before to restart wathever state 
+                    if timeNow > lastStopTime + 4.0:
+                        #we do the stop during 4 second and then restart the car
+                        pathControlSpeed = speedBeforeStop
+                        #disable stop in orde to let the car possibility to start
+                        stopState='disableStop'
+                
+                #in this state we stay 4 second without allowing to stop
+                if stopState=='disableStop':
+                    if timeNow > lastStopTime + 8.0:
+                        #during this extra time we do avoid to do the stop again even if detected 
+                        #and then reset everything 
+                        lastStopTime = timeNow
+                        stopState = 'None'
+                        
+                if lastStopState != stopState:
+                    print 'stopstat= ',stopState
+                    lastStopState=stopState
+                    
+                    
                 #############################Handle gpraphSlam ###############
                 #check now if the slamGraph Thread posted a new steeringAngle
                 try:
@@ -313,6 +313,7 @@ class pathControl(threading.Thread):
 
                 if pathControlSpeed != lastPastControlSpeed:
                     lastPastControlSpeed = pathControlSpeed
+                    print 'send speed =',pathControlSpeed
                     self.srvPathControlCommand.cmd_q.put(ClientCommand(ClientCommand.SEND, 'SPEED='+str(pathControlSpeed)))
  
                                     
@@ -346,9 +347,11 @@ class pathControl(threading.Thread):
                         
                         elif keyPressed == 'minus':
                             pathControlSpeed -= 50
+                            initialCarSpeed -=50
                             
                         elif keyPressed == 'plus':
                             pathControlSpeed += 50
+                            initialCarSpeed+=50
                             
                         elif keyPressed == 'PATH_CONTROL':
                             strText='Plot Slam'

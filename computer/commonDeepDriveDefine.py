@@ -77,9 +77,9 @@ sensorClientEnable = False
 #true if we have gps hardware available and stream connected
 gpsEnable = False
 #true if the path control Server/client need to be activated
-pathControlSteeringEnable = True
+pathControlSteeringEnable = False
 #true if the path control command  server/client is enable.
-pathControlCommandEnable = False
+pathControlCommandEnable = True
 #true if we want to compute GraphSlam steering estimate
 graphSlamEnable = False
 #true if the neural network steering prediction (with client and server) is enable 
@@ -96,7 +96,7 @@ perceptionEnable = True
 showAllImage = False
 
 #car speed in mm/s
-INITIAL_CAR_SPEED = 300
+INITIAL_CAR_SPEED = 500
 INITIAL_CAR_SPEED_COMMAND = 50
 MAX_CAR_SPEED = 1000
 P_SPEED_REGULATION = 0.1

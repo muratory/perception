@@ -167,7 +167,7 @@ class PerceptionThread(threading.Thread):
         self.sctCarSensor.start()
 
         # create Keyboard Thread
-        self.keyboardThread = keyboardThread()
+        self.keyboardThread = keyboardThread(0,0)
         self.keyboardThread.name = 'Perception_Kb'
         self.keyboardThread.start()
 
@@ -185,6 +185,7 @@ class PerceptionThread(threading.Thread):
         videoCarClientConnected = False
         sensorClientConnected = False
         perceptionServerConnected = False
+        
 
         # launch connection thread for all client
         if videoCarClientEnable == True:
@@ -241,6 +242,9 @@ class PerceptionThread(threading.Thread):
 
         lastKeyPressed = 0
         
+        cv2.namedWindow('Perception')
+        cv2.moveWindow('Perception', 250, 0)
+        
         # initial steer command set to stop
         try:
             
@@ -271,7 +275,7 @@ class PerceptionThread(threading.Thread):
                         i = cv2.imdecode(np.fromstring(self.sctVideoCarStream.lastImage, dtype=np.uint8),-1)
                         
                         #write imaritege for other thread 
-                        cv2.imwrite('frame.png',i)
+                        cv2.imwrite('frame.jpg',i)
                         
                         #measure fps
                         timeNow = time.time()
@@ -284,7 +288,7 @@ class PerceptionThread(threading.Thread):
 
                         
                         ############################# Perception ###############
-                        r = detect(self.net, self.meta, 'frame.png')
+                        r = detect(self.net, self.meta, 'frame.jpg')
                         
 
                 
@@ -321,9 +325,12 @@ class PerceptionThread(threading.Thread):
                                 #send object when detected 
                                 distObj = coefFocal*3000/int(((x2-x1)+(y2-y1)))
                                 
-                                                                #write object class in black
+                                #write object class in black
                                 cv2.putText(i,classObject+' '+str(distObj)+'cm',(x1+1,y1+10),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,0),1)
 
+                                if distObj < 30.0:
+                                    print 'send Object %s %s'%(classObject,distObj)
+                                    
                                 self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.SEND, classObject+','+str(distObj)))
                             
 
