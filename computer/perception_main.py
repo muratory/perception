@@ -289,7 +289,6 @@ class PerceptionThread(threading.Thread):
                         
                         ############################# Perception ###############
                         r = detect(self.net, self.meta, 'frame.jpg')
-                        
 
                 
                         if len(r)>0:
@@ -306,9 +305,9 @@ class PerceptionThread(threading.Thread):
                                 
                                 kernel=(21,21)
                                 
-                                if classObject == 'person':
+                                if classObject == 'yield':
                                     cv2.rectangle(i, (x1, y1), (x2,y2), (0,0,255), 2)
-                                    coefFocal = 2                          
+                                    coefFocal = 1                          
                                 elif classObject == 'car':
                                     cv2.rectangle(i, (x1, y1), (x2,y2), (0,0,255), 2)
                                     coefFocal = 5
@@ -316,11 +315,12 @@ class PerceptionThread(threading.Thread):
                                     cv2.rectangle(i, (x1, y1), (x2,y2), (0,0,255), 2)
                                     coefFocal = 1
                                 elif classObject == 'renault' :
-                                    cv2.rectangle(i, (x1, y1), (x2,y2), (255,0,0), 2)
-                                    coefFocal=2
+                                    color = 255*np.random.rand(3)
+                                    cv2.rectangle(i, (x1, y1), (x2,y2), color, 2)
+                                    coefFocal=1
                                 else:
-                                    cv2.rectangle(i, (x1, y1), (x2,y2), (0,255,0), 2)   
-                                    coefFocal = 1                             
+                                    cv2.rectangle(i, (x1, y1), (x2,y2), (255,255,0), 2)   
+                                    coefFocal = 3                             
              
                                 #send object when detected 
                                 distObj = coefFocal*3000/int(((x2-x1)+(y2-y1)))
@@ -328,10 +328,14 @@ class PerceptionThread(threading.Thread):
                                 #write object class in black
                                 cv2.putText(i,classObject+' '+str(distObj)+'cm',(x1+1,y1+10),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,0),1)
 
+                                '''
                                 if distObj < 30.0:
                                     print 'send Object %s %s'%(classObject,distObj)
-                                    
-                                self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.SEND, classObject+','+str(distObj)))
+                                '''
+                                
+                                #filtering condition before to send the object to path control
+                                if classObject != 'renault' and distObj <40.0 :
+                                    self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.SEND, classObject+','+str(distObj)))
                             
 
                         

@@ -260,14 +260,21 @@ class pathControl(threading.Thread):
                         pathControlSpeed = speedBeforeStop
                         #disable stop in orde to let the car possibility to start
                         stopState='disableStop'
+                        #reset last time to start from it
+                        lastStopTime = timeNow
+                        
+                    elif objectName == 'car':
+                        #if car detected restart for 4 second the counter
+                        lastStopTime = timeNow
                 
                 #in this state we stay 4 second without allowing to stop
                 if stopState=='disableStop':
-                    if timeNow > lastStopTime + 8.0:
+                    if timeNow > lastStopTime + 4.0:
                         #during this extra time we do avoid to do the stop again even if detected 
-                        #and then reset everything 
                         lastStopTime = timeNow
                         stopState = 'None'
+
+                    
                         
                 if lastStopState != stopState:
                     print 'stopstat= ',stopState
