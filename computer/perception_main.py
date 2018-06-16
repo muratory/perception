@@ -334,7 +334,8 @@ class PerceptionThread(threading.Thread):
                                 '''
                                 
                                 #filtering condition before to send the object to path control
-                                if classObject != 'renault' and distObj <40.0 :
+                                #if classObject != 'renault' and distObj <40.0 :
+                                if classObject != 'renault' :
                                     self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.SEND, classObject+','+str(distObj)))
                             
 

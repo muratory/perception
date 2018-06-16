@@ -85,7 +85,7 @@ graphSlamEnable = False
 #true if the neural network steering prediction (with client and server) is enable 
 nnSteeringEnable = False
 #true if the roadLine detection steering is enable 
-roadLineSteeringEnable = False
+roadLineSteeringEnable = True
 #true if the roadLine detection steering is enable 
 perceptionEnable = True
 

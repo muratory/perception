@@ -234,17 +234,19 @@ class pathControl(threading.Thread):
                         #we received an object so reset the noObjCounter
                         noObjCounter=0
                         lastnoObjectTime = timeNow
+                        
 
                         #take action depending on object detected
                         if (objectName == 'stop'):
-                            if (int(distObj) <= 30 ):
-                                #only stop the car if we are not already in a procedure to stop it
-                                if stopState == 'None':
-                                    stopState = 'firstEntry'
-                                    #reset speed for sure and wait at least 4 s
-                                    speedBeforeStop = pathControlSpeed
-                                    pathControlSpeed = 0
-                                    lastStopTime = timeNow 
+                            #only stop the car if we are not already in a procedure to stop it
+                            if stopState == 'None' or stopState == 'firstEntry':
+                                stopState = 'firstEntry'
+                                #reset speed for sure and wait at least 4 s
+                                speedBeforeStop = pathControlSpeed
+                                timeBeforeStop = (int(distObj)*14) / pathControlSpeed
+                                print 'TimeBeforeStop=' + str(timeBeforeStop)
+                                stopTime = timeNow + timeBeforeStop
+                                
                                            
                 except Queue.Empty:
                     #noObjCounter is incremented every second 
@@ -252,32 +254,36 @@ class pathControl(threading.Thread):
                         noObjCounter+=1
                         lastnoObjectTime=timeNow
 
-                #manage the state for speed control:
+                #manage the firstEntry stop state xwhich wait for the car arrive at stop:
                 if stopState=='firstEntry':
+                    print 'TimeBefStop=' + str(timeNow - stopTime)
                     #wait for 4 s before to restart wathever state 
-                    if timeNow > lastStopTime + 4.0:
+                    if timeNow >= stopTime:
+                        #we do the stop during 4 second and then restart the car
+                        pathControlSpeed = 0
+                        #disable stop in orde to let the car possibility to start
+                        stopState='waitAtStop'
+                        #reset last time to start from it
+                        stopTimeAtStop = timeNow
+                
+                #manage the state wait at Stop
+                if stopState=='waitAtStop':
+                    #wait for 4 s before to restart wathever state 
+                    if timeNow > stopTimeAtStop + 4.0:
                         #we do the stop during 4 second and then restart the car
                         pathControlSpeed = speedBeforeStop
                         #disable stop in orde to let the car possibility to start
-                        stopState='disableStop'
-                        #reset last time to start from it
-                        lastStopTime = timeNow
-                        
-                    elif objectName == 'car':
-                        #if car detected restart for 4 second the counter
-                        lastStopTime = timeNow
+                        stopState = 'restartFromStop'
+                        restartFromStopTime = timeNow
                 
-                #in this state we stay 4 second without allowing to stop
-                if stopState=='disableStop':
-                    if timeNow > lastStopTime + 4.0:
-                        #during this extra time we do avoid to do the stop again even if detected 
-                        lastStopTime = timeNow
+                #this state allows to start the car without taking into account Stop again
+                if stopState=='restartFromStop':
+                    if timeNow > restartFromStopTime + 2.0:
                         stopState = 'None'
 
-                    
                         
                 if lastStopState != stopState:
-                    print 'stopstat= ',stopState
+                    print 'stopState= ',stopState
                     lastStopState=stopState
                     
                     
