@@ -465,10 +465,11 @@ class DeepDriveThread(threading.Thread):
                 try:
                     # try to see if image ready
                     reply = self.sctCarSensor.reply_q.get(False)
+                    print 'sensor value = ' + str(reply.data)
                     if reply.type == ClientReply.SUCCESS:
                         if (reply.data < STOP_DISTANCE):
                             print 'sensor value = ' + str(reply.data)
-                            if (inputAngle == 0) :
+                            if lastKeyPressed != 'up' and lastKeyPressed != 'down':
                                 self.sctCarSteering.cmd_q.put(ClientCommand(
                                     ClientCommand.SEND, ('STEER_COMMAND', 'stop')))
                         elif startCar == 1 :

@@ -12,7 +12,6 @@ import random
 from commonDeepDriveDefine import *
 from KeyboardThread import *
 from VideoThread import *
-from SensorThread import *
 
 
 
@@ -161,11 +160,6 @@ class PerceptionThread(threading.Thread):
         self.sctVideoCarStream.name = 'sctVideoCarStream'
         self.sctVideoCarStream.start()
 
-        # create Sensor Client Thread
-        self.sctCarSensor = SensorThread()
-        self.sctCarSensor.name = 'SensorThread'
-        self.sctCarSensor.start()
-
         # create Keyboard Thread
         self.keyboardThread = keyboardThread(0,0)
         self.keyboardThread.name = 'Perception_Kb'
@@ -183,7 +177,6 @@ class PerceptionThread(threading.Thread):
     def ConnectClient(self):
         # loop until all client connected
         videoCarClientConnected = False
-        sensorClientConnected = False
         perceptionServerConnected = False
         
 
@@ -192,18 +185,13 @@ class PerceptionThread(threading.Thread):
             self.sctVideoCarStream.cmd_q.put(ClientCommand(
                 ClientCommand.CONNECT, 'http://' + CAR_IP + ':' +
                 str(PORT_VIDEO_CAR_SERVER) + '/?action=stream'))
-            
-            
-        if sensorClientEnable == True:
-            self.sctCarSensor.cmd_q.put(ClientCommand(ClientCommand.CONNECT, ADDR_SENSOR_SERVER))
+
 
         if perceptionEnable == True:
             self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.CONNECT, PORT_PERCEPTION_SERVER))
 
             
-        while ((videoCarClientConnected != videoCarClientEnable) or
-                (sensorClientConnected != sensorClientEnable)):
-
+        while (videoCarClientConnected != videoCarClientEnable):
             # wait for .5 second before to check
             time.sleep(0.5)
 
@@ -215,15 +203,6 @@ class PerceptionThread(threading.Thread):
                         print 'Video stream server connected'
                 except Queue.Empty:
                     print 'Video Client not connected'
-
-            if (sensorClientConnected != sensorClientEnable):
-                try:
-                    reply = self.sctCarSensor.reply_q.get(False)
-                    if reply.type == ClientReply.SUCCESS:
-                        sensorClientConnected = True
-                        print 'Sensor server connected'
-                except Queue.Empty:
-                    print 'Sensor Client not connected'
 
 
             try:
@@ -257,7 +236,6 @@ class PerceptionThread(threading.Thread):
             
             print 'Start Main Thread and sub Thread for perception'
             self.sctVideoCarStream.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
-            self.sctCarSensor.cmd_q.put(ClientCommand(ClientCommand.RECEIVE, ''))
 
             lastFrameTime    = time.time()
             fpsMeasure =  np.zeros(30, dtype=np.float)
@@ -361,29 +339,6 @@ class PerceptionThread(threading.Thread):
                     pass
 
         
-                ############################# Get Sensor value ###############
-                try:
-                    # try to see if image ready
-                    reply = self.sctCarSensor.reply_q.get(False)
-                    if reply.type == ClientReply.SUCCESS:
-                        if (reply.data < STOP_DISTANCE):
-                            print 'sensor value = ' + str(reply.data)
-                            if (inputAngle == 0) :
-                                self.sctCarSteering.cmd_q.put(ClientCommand(
-                                    ClientCommand.SEND, ('STEER_COMMAND', 'stop')))
-                        elif startCar == 1 :
-                            #move forward the car only if we ordered to start it previously 
-                            self.sctCarSteering.cmd_q.put(ClientCommand(
-                                ClientCommand.SEND, ('STEER_COMMAND', 'forward')))
-
-                    else:
-                        print 'Error getting Sensor :' + str(reply.data)
-                        break
-
-                except Queue.Empty:
-                    # queue empty most of the time because image not ready
-                    pass
-
 
                 ######################## Get control from the keyboard if any #########################
                 try:
@@ -426,15 +381,12 @@ class PerceptionThread(threading.Thread):
             print 'ending Perception'
             self.sctVideoCarStream.cmd_q.put(ClientCommand(ClientCommand.STOP))
             self.sctVideoCarStream.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
-            self.sctCarSensor.cmd_q.put(ClientCommand(ClientCommand.STOP))
-            self.sctCarSensor.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             self.keyboardThread.cmd_q.put(ClientCommand(ClientCommand.STOP))
             self.keyboardThread.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.STOP))
             self.srvPerception.cmd_q.put(ClientCommand(ClientCommand.CLOSE))
             # and make sure all of them ended properly
             self.sctVideoCarStream.join()
-            self.sctCarSensor.join()
             self.keyboardThread.join()
             self.srvPerception.join()
             print 'Perception Done'

@@ -19,7 +19,6 @@ class SensorThread(commonThreadSocket):
 
     def _handle_RECEIVE(self, cmd):
         if self.connected == True:
-            lastDistance = 100
             while True:
                 #check if new command comes in
                 try:  
@@ -37,9 +36,8 @@ class SensorThread(commonThreadSocket):
                         if len(data) == msg_len:
                             newDistance = int(data)
                             #check if we have to send information to main task
-                            if (lastDistance < STOP_DISTANCE) or  ((lastDistance >STOP_DISTANCE) and (newDistance <STOP_DISTANCE)):
+                            if (newDistance < STOP_DISTANCE):
                                 self.reply_q.put(self._success_reply(newDistance))
-                                lastDistance = newDistance
                     else:
                         #for whatever reason the len does not match
                         self.reply_q.put(self._error_reply('Sensor socket misalignement'))

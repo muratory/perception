@@ -73,7 +73,7 @@ videoCarClientEnable = True
 #client to enable to push steer command to the car
 steerClientEnable = True
 #Client to enable to get ultrasonic sensor distance
-sensorClientEnable = False
+sensorClientEnable = True
 #true if we have gps hardware available and stream connected
 gpsEnable = False
 #true if the path control Server/client need to be activated
